@@ -29,14 +29,18 @@ class IncidentController extends Controller
         try {
             $response = Http::withToken($this->bearerToken)
                 ->get($this->monitoringUrl . '/applications/' . $this->applicationId . '/incidents');
-            $data = $response->json();
-            $list = is_array($data) ? array_map(fn($i) => [
+            $body = $response->json();
+
+            // L'API retourne { data: [...] } ou directement un tableau
+            $raw  = $body['data'] ?? $body;
+            $list = is_array($raw) ? array_map(fn($i) => [
                 'id'         => $i['id']         ?? null,
                 'title'      => $i['title']      ?? '',
                 'severity'   => $i['severity']   ?? '',
                 'status'     => $i['status']     ?? '',
                 'start_date' => $i['start_date'] ?? '',
-            ], $data) : [];
+            ], $raw) : [];
+
             return response()->json([
                 'incidents'  => $list,
                 'total'      => count($list),

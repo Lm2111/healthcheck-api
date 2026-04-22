@@ -49,7 +49,7 @@ class AlertService
             ]);
         $data = $response->json();
         return [
-            'id'       => $data['id'] ?? null,
+            'id'       => $data['data']['id'] ?? $data['id'] ?? null,
             'severity' => $severity,
             'message'  => 'Incident created on monitoring platform',
         ];
