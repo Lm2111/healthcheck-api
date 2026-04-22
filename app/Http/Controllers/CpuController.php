@@ -22,9 +22,13 @@ class CpuController extends Controller
 
     private function getCpuUsage(): float
     {
-        $output = shell_exec("top -l 2 -n 0 | grep 'CPU usage' | tail -1");
-        preg_match('/(\d+\.?\d*)% user/', $output ?? '', $m);
-        preg_match('/(\d+\.?\d*)% sys/',  $output ?? '', $s);
+        if (PHP_OS_FAMILY === 'Windows') {
+            preg_match('/LoadPercentage=(\d+)/', shell_exec('wmic cpu get LoadPercentage /Value') ?? '', $m);
+            return floatval($m[1] ?? 0);
+        }
+        $out = shell_exec("top -l 2 -n 0 | grep 'CPU usage' | tail -1");
+        preg_match('/(\d+\.?\d*)% user/', $out ?? '', $m);
+        preg_match('/(\d+\.?\d*)% sys/',  $out ?? '', $s);
         return round(floatval($m[1] ?? 0) + floatval($s[1] ?? 0), 2);
     }
 
@@ -38,8 +42,12 @@ class CpuController extends Controller
             $alert = $this->alertService->checkAndAlert('CPU', $usage, gethostname());
             $data  = [
                 'total_usage_percent' => $usage,
-                'logical_cores'       => intval(shell_exec('sysctl -n hw.logicalcpu')),
-                'physical_cores'      => intval(shell_exec('sysctl -n hw.physicalcpu')),
+                'logical_cores'       => PHP_OS_FAMILY === 'Windows'
+                    ? intval(shell_exec('wmic cpu get NumberOfLogicalProcessors /Value | findstr ='))
+                    : intval(shell_exec('sysctl -n hw.logicalcpu')),
+                'physical_cores'      => PHP_OS_FAMILY === 'Windows'
+                    ? intval(shell_exec('wmic cpu get NumberOfCores /Value | findstr ='))
+                    : intval(shell_exec('sysctl -n hw.physicalcpu')),
                 'checked_at'          => $this->now(),
                 'alert_triggered'     => $alert['triggered'],
             ];
